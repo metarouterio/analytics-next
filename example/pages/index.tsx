@@ -10,6 +10,10 @@ import Table from 'rc-table'
 
 import { AnalyticsSettings, AnalyticsBrowser, Analytics, Context } from '../../'
 
+declare global {
+  var analytics: Analytics
+}
+
 const jsontheme = {
   scheme: 'tomorrow',
   author: 'chris kempson (http://chriskempson.com)',
@@ -31,6 +35,57 @@ const jsontheme = {
   base0F: '#a3685a',
 }
 
+function analyticsSnippet(): Analytics | undefined {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const analytics: any = window.analytics || []
+  window.analytics = analytics
+  if (!analytics.initialize) {
+    if (analytics.invoked) {
+      return analytics
+    } else {
+      analytics.invoked = !0
+      analytics.methods = [
+        'trackSubmit',
+        'trackClick',
+        'trackLink',
+        'trackForm',
+        'pageview',
+        'identify',
+        'reset',
+        'group',
+        'track',
+        'ready',
+        'alias',
+        'debug',
+        'page',
+        'once',
+        'off',
+        'on',
+        'addSourceMiddleware',
+        'addIntegrationMiddleware',
+        'setAnonymousId',
+        'addDestinationMiddleware',
+      ]
+      analytics.factory = function (e) {
+        return function () {
+          var t = Array.prototype.slice.call(arguments)
+          t.unshift(e)
+          analytics.push(t)
+          return analytics
+        }
+      }
+      for (var e = 0; e < analytics.methods.length; e++) {
+        var key = analytics.methods[e]
+        analytics[key] = analytics.factory(key)
+      }
+    }
+  }
+
+  return analytics
+}
+
 export default function Home(): React.ReactElement {
   const [analytics, setAnalytics] = useState<Analytics | undefined>(undefined)
   const [settings, setSettings] = useState<AnalyticsSettings | undefined>(
@@ -38,6 +93,9 @@ export default function Home(): React.ReactElement {
   )
   const [analyticsReady, setAnalyticsReady] = useState<boolean>(false)
   const [writeKey, setWriteKey] = useState<string>('')
+  useEffect(() => {
+    setAnalytics(analyticsSnippet())
+  }, [])
 
   const newEvent = () => {
     const fakerFns = [
@@ -63,7 +121,6 @@ export default function Home(): React.ReactElement {
   }
 
   const [event, setEvent] = React.useState('')
-  const [ctx, setCtx] = React.useState<Context>()
 
   async function fetchAnalytics() {
     const [response, ctx] = await AnalyticsBrowser.load({
@@ -72,7 +129,6 @@ export default function Home(): React.ReactElement {
     })
 
     if (response) {
-      setCtx(ctx)
       setAnalytics(response)
       setAnalyticsReady(true)
       setEvent(newEvent())
@@ -89,10 +145,7 @@ export default function Home(): React.ReactElement {
     }
 
     const evt = JSON.parse(event)
-    const ctx = await analytics.track(evt?.event ?? 'Track Event', evt)
-    setCtx(ctx)
-
-    ctx.flush()
+    await analytics.track(evt?.event ?? 'Track Event', evt)
   }
 
   const identify = async (e) => {
@@ -104,11 +157,7 @@ export default function Home(): React.ReactElement {
 
     const evt = JSON.parse(event)
     const { userId = 'Test User', ...traits } = evt
-    const ctx = await analytics.identify(userId, traits)
-
-    setCtx(ctx)
-
-    ctx.flush()
+    await analytics.identify(userId, traits)
   }
 
   return (
@@ -176,7 +225,6 @@ export default function Home(): React.ReactElement {
               style={{
                 marginRight: 20,
               }}
-              disabled={!analyticsReady}
               onClick={(e) => track(e)}
             >
               Track
@@ -186,7 +234,6 @@ export default function Home(): React.ReactElement {
                 marginRight: 20,
               }}
               className="drac-btn drac-bg-purple-cyan"
-              disabled={!analyticsReady}
               onClick={(e) => identify(e)}
             >
               Identify
@@ -207,14 +254,6 @@ export default function Home(): React.ReactElement {
 
         <div className="drac-box drac-spacing-lg-x" style={{ flex: 1 }}>
           <h2 className="drac-text">Result</h2>
-          {ctx && (
-            <JSONTree
-              theme={jsontheme}
-              sortObjectKeys
-              data={ctx.event}
-              invertTheme={false}
-            />
-          )}
         </div>
       </main>
 
@@ -256,7 +295,6 @@ export default function Home(): React.ReactElement {
                 },
               },
             ]}
-            data={ctx?.logs() ?? []}
           />
         </div>
 
@@ -289,7 +327,6 @@ export default function Home(): React.ReactElement {
                 },
               },
             ]}
-            data={ctx?.stats.metrics ?? []}
           />
         </div>
       </div>
