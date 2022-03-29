@@ -1,5 +1,5 @@
 import { getProcessEnv } from './lib/get-process-env'
-import { getCDN } from './lib/parse-cdn'
+import { getCDN, setGlobalCDNUrl } from './lib/parse-cdn'
 
 import fetch from 'unfetch'
 import { Analytics, AnalyticsSettings, InitOptions } from './analytics'
@@ -62,8 +62,14 @@ export interface AnalyticsBrowserSettings extends AnalyticsSettings {
   cdnSettings?: LegacySettings & Record<string, unknown>
 }
 
-export function loadLegacySettings(writeKey: string, cdn?: string): Promise<LegacySettings> {
-  const baseUrl = cdn ?? window.analytics?._cdn ?? getCDN()
+export function loadLegacySettings(
+  writeKey: string,
+  cdn?: string
+): Promise<LegacySettings> {
+  if (cdn) {
+    setGlobalCDNUrl(cdn)
+  }
+  const baseUrl = getCDN()
   return fetch(`${baseUrl}/v1/projects/${writeKey}/settings`)
     .then((res) => res.json())
     .catch((err) => {
@@ -232,7 +238,8 @@ export class AnalyticsBrowser {
     options: InitOptions = {}
   ): Promise<[Analytics, Context]> {
     const legacySettings =
-      settings.cdnSettings ?? (await loadLegacySettings(settings.writeKey, settings.cdn))
+      settings.cdnSettings ??
+      (await loadLegacySettings(settings.writeKey, settings.cdn))
 
     const retryQueue: boolean =
       legacySettings.integrations['Segment.io']?.retryQueue ?? true
