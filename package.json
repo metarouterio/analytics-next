@@ -1,6 +1,6 @@
 {
   "name": "@metarouter/analytics-next",
-  "version": "1.34.1",
+  "version": "1.34.2",
   "repository": "metarouter/analytics-next",
   "license": "MIT",
   "main": "dist/cjs/index.js",

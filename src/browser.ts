@@ -7,11 +7,9 @@ import { Context } from './core/context'
 import { Plan } from './core/events'
 import { Plugin } from './core/plugin'
 import { MetricsOptions } from './core/stats/remote-metrics'
-import { mergedOptions } from './lib/merged-options'
 import { pageEnrichment } from './plugins/page-enrichment'
 import { remoteLoader, RemotePlugin } from './plugins/remote-loader'
 import type { RoutingRule } from './plugins/routing-middleware'
-import { segmentio, SegmentioSettings } from './plugins/segmentio'
 import { validation } from './plugins/validation'
 
 export interface LegacyIntegrationConfiguration {
@@ -169,7 +167,6 @@ async function registerPlugins(
       })
     : undefined
 
-  const mergedSettings = mergedOptions(legacySettings, options)
   const remotePlugins = await remoteLoader(
     legacySettings,
     analytics.integrations
@@ -185,20 +182,6 @@ async function registerPlugins(
 
   if (schemaFilter) {
     toRegister.push(schemaFilter)
-  }
-
-  const shouldIgnoreSegmentio =
-    (opts.integrations?.All === false && !opts.integrations['Segment.io']) ||
-    (opts.integrations && opts.integrations['Segment.io'] === false)
-
-  if (!shouldIgnoreSegmentio) {
-    toRegister.push(
-      segmentio(
-        analytics,
-        mergedSettings['Segment.io'] as SegmentioSettings,
-        legacySettings.integrations
-      )
-    )
   }
 
   const ctx = await analytics.register(...toRegister)
