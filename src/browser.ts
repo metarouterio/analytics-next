@@ -63,7 +63,7 @@ export interface AnalyticsBrowserSettings extends AnalyticsSettings {
 }
 
 export function loadLegacySettings(writeKey: string): Promise<LegacySettings> {
-  const cdn = window.analytics?._cdn ?? getCDN()
+  const cdn = getCDN()
   return fetch(`${cdn}/v1/projects/${writeKey}/settings`)
     .then((res) => res.json())
     .catch((err) => {
@@ -234,8 +234,7 @@ export class AnalyticsBrowser {
     const legacySettings =
       settings.cdnSettings ?? (await loadLegacySettings(settings.writeKey))
 
-    const retryQueue: boolean =
-      legacySettings.integrations['Segment.io']?.retryQueue ?? true
+    const retryQueue = true
 
     const opts: InitOptions = { retryQueue, ...options }
     const analytics = new Analytics(settings, opts)

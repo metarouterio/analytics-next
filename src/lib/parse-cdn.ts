@@ -22,7 +22,7 @@ export function getCDN(): string {
   // - the script is removed after execution
   // in this case, we fall back to the default Segment CDN
   if (!cdn) {
-    return `https://cdn.segment.com`
+    return `https://cdn.metarouter.io`
   }
 
   return cdn
