@@ -223,7 +223,7 @@ export class AnalyticsBrowser {
     const analytics = new Analytics(settings, opts)
 
     const plugins = settings.plugins ?? []
-    // Context.initMetrics(legacySettings.metrics)
+    Context.initMetrics(legacySettings.metrics)
 
     // needs to be flushed before plugins are registered
     flushPreBuffer(analytics)
