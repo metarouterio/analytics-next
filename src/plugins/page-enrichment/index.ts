@@ -1,4 +1,6 @@
+// @ts-ignore
 import type { Context } from '@/core/context'
+// @ts-ignore
 import type { Plugin } from '@/core/plugin'
 
 interface PageDefault {
