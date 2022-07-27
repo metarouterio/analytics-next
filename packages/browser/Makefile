@@ -1,5 +1,6 @@
 BIN := ./node_modules/.bin
 yarn_run := yarn run -T browser
+NODE_OPTIONS=--openssl-legacy-provider
 
 help: ## Lists all available make tasks and some short documentation about them
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-24s\033[0m %s\n", $$1, $$2}'
