@@ -1,0 +1,16 @@
+{
+  "name": "standalone-playground",
+  "private": true,
+  "installConfig": {
+    "hoistingLimits": "workspaces"
+  },
+  "scripts": {
+    "dev": "yarn concurrently 'yarn run -T watch --filter=standalone-playground' 'sleep 10 && npx http-server .'"
+  },
+  "dependencies": {
+    "@segment/analytics-next": "workspace:^"
+  },
+  "devDependencies": {
+    "concurrently": "^7.2.1"
+  }
+}

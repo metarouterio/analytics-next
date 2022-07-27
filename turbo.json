@@ -1,0 +1,31 @@
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**"]
+    },
+    "build:packages": {
+      "dependsOn": [
+        "@segment/analytics-next#build",
+        "@segment/analytics-node#build",
+        "@segment/analytics-core#build"
+      ],
+      "outputs": ["dist/**"]
+    },
+    "test": {
+      "dependsOn": ["build:packages"],
+      "outputs": [],
+      "inputs": ["src/**", "test*/**"]
+    },
+    "watch": {
+      "cache": false,
+      "dependsOn": ["build:packages"]
+    },
+    "lint": {
+      "dependsOn": ["build:packages"],
+      "outputs": [],
+      "inputs": ["**/*.ts", "**/*.tsx", "**/*.js"]
+    }
+  }
+}

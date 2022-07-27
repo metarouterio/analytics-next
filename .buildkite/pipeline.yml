@@ -1,89 +1,164 @@
 env:
-  SEGMENT_CONTEXTS: 'snyk,npm,aws-credentials,ecr,npm-publish'
-  SEGMENT_BUILDKITE_IMAGE: 'analytics-next-ci-agent'
+  SEGMENT_CONTEXTS: "snyk,npm,aws-credentials,ecr,npm-publish"
+  SEGMENT_BUILDKITE_IMAGE: "analytics-next-ci-agent"
 steps:
-  - label: ':hammer: Build Libraries'
+  - label: "[Monorepo] QA"
+    key: monorepo
+    agents:
+      queue: v1
+    commands:
+      - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
+      - echo "--- Install dependencies"
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 HUSKY=0 yarn install --immutable
+      - echo "+++ Run tests"
+      - yarn constraints
+      - yarn run test:scripts
+
+  - label: "[Browser] Lint + Test"
     key: build
     agents:
       queue: v1
     commands:
       - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
-      - make ci
+      - echo "--- Install dependencies"
+      - yarn install --immutable
+      - yarn run -T browser exec make ci
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v2.0.0:
           key: "v1.1-cache-dev-{{ checksum 'yarn.lock' }}"
-          paths: ['node_modules/']
+          paths: [".yarn/cache/"]
           save: true
 
-  - label: ':perfection: QA'
+  - label: "[Browser] QA / E2E :perfection:"
     key: qa
     agents:
       queue: v1
     commands:
       - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
-      - yarn install
-      - yarn add --dev playwright
-      - echo "+++ Running QA Tests :pray:"
-      - make test-qa
+      - echo "--- Install dependencies"
+      - yarn install --immutable
+      - echo "+++ Run QA Tests :pray:"
+      - yarn run -T browser exec make test-qa
     retry:
       automatic:
-        - exit_status: '*'
+        - exit_status: "*"
           limit: 2
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v2.0.0:
           key: "v1.1-cache-dev-{{ checksum 'yarn.lock' }}"
-          paths: ['node_modules/']
+          paths: [".yarn/cache/"]
 
-  - label: ':lock: Snyk'
+  - label: "[Node] Lint + Test"
+    key: analytics-node-test
     agents:
       queue: v1
-    command: 'bk-snyk'
+    commands:
+      - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
+      - echo "--- Install dependencies"
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 HUSKY=0 yarn install --immutable
+      - echo "--- Build bundles"
+      - yarn run -T node+deps build
+      - echo "+++ Run tests"
+      - yarn run -T node lint
+      - yarn run -T node test
+    plugins:
+      - ssh://git@github.com/segmentio/cache-buildkite-plugin#v2.0.0:
+          key: "v1.1-cache-dev-{{ checksum 'yarn.lock' }}"
+          paths: [".yarn/cache/"]
 
-  - label: ':thisisfine: Destinations QA'
+  - label: "[Core] Lint + Test"
+    agents:
+      queue: v1
+    commands:
+      - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
+      - echo "--- Install dependencies"
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 HUSKY=0 yarn install --immutable
+      - echo "--- Build bundles"
+      - yarn run -T core+deps build
+      - echo "+++ Run tests"
+      - yarn run -T core lint
+      - yarn run -T core test
+    plugins:
+      - ssh://git@github.com/segmentio/cache-buildkite-plugin#v2.0.0:
+          key: "v1.1-cache-dev-{{ checksum 'yarn.lock' }}"
+          paths: [".yarn/cache/"]
+
+  - label: ":thisisfine: [Browser] Destinations QA / E2E"
     key: destinations
     agents:
       queue: v1
     commands:
       - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
-      - yarn install
-      - yarn add --dev playwright
-      - echo "+++ Running Destinations QA Tests :pray:"
-      - make test-qa-destinations
+      - echo "--- Install dependencies"
+      - yarn install --immutable
+      - echo "+++ Run Destinations QA Tests :pray:"
+      - yarn run -T browser exec make test-qa-destinations
     soft_fail:
-      - exit_status: '*'
+      - exit_status: "*"
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v2.0.0:
           key: "v1.1-cache-dev-{{ checksum 'yarn.lock' }}"
-          paths: ['node_modules/']
+          paths: [".yarn/cache/"]
 
   # Auto deploys branches
-  - label: ':rocket: Release Branch'
-    branches: '!master !v*'
+  - label: "[Browser] Release Branch (non-prod) :rocket:"
+    branches: "!master !v* !publish-test"
     agents:
       queue: v1
     commands:
       - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
-      - yarn install
-      - make build-prod
-      - NODE_ENV=production bash ./scripts/release.sh
+      - echo "--- Install dependencies"
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 HUSKY=0 yarn install --immutable
+      - echo "--- Build bundles"
+      - yarn run -T browser+deps build
+      - echo "+++ Release Branch"
+      - NODE_ENV=production yarn run -T browser exec bash ./scripts/release.sh
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v2.0.0:
           key: "v1.1-cache-dev-{{ checksum 'yarn.lock' }}"
-          paths: ['node_modules/']
+          paths: [".yarn/cache/"]
+
+  - label: "[Examples] Lint + Test :hammer:"
+    key: examples
+    agents:
+      queue: v1
+    commands:
+      - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
+      - echo "--- Install dependencies"
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 HUSKY=0 yarn install --immutable
+      - echo "--- Build bundles"
+      - yarn workspaces foreach -vtR --from '{with-next-js,with-vite}' run build
+      - echo "+++ Run tests"
+      - yarn workspaces foreach -vt --from 'with-next-js' run lint
+    plugins:
+      - ssh://git@github.com/segmentio/cache-buildkite-plugin#v2.0.0:
+          key: "v1.1-cache-dev-{{ checksum 'yarn.lock' }}"
+          paths: [".yarn/cache/"]
 
   # Deploy and NPM publish releases
-  - label: ':rocket: Release Production'
+  - label: "Release / Publish Packages :rocket:"
+    if: |
+      // Only run when Version Packages PR is merged in
+      build.message =~ /^Version Packages/ &&
+      build.branch == "master" &&
+      build.message !~ /\[skip\]/i
     depends_on: [build]
-    branches: 'v*'
     agents:
       queue: v1
     commands:
       - npm config set "//registry.npmjs.org/:_authToken" $${NPM_TOKEN}
-      - yarn install
-      - make build-prod
-      - NODE_ENV=production RELEASE=true bash ./scripts/release.sh
-      - npm publish
+      - git config --global user.name "buildkite-agent"
+      - git config --global user.email "buildkite-agent@segment.com"
+      - echo "--- Install dependencies"
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 HUSKY=0 yarn install --immutable
+      - echo "+++ Release packages"
+      - yarn release
     plugins:
       - ssh://git@github.com/segmentio/cache-buildkite-plugin#v2.0.0:
           key: "v1.1-cache-dev-{{ checksum 'yarn.lock' }}"
-          paths: ['node_modules/']
+          paths: [".yarn/cache/"]
+
+  - label: "Snyk :lock:"
+    agents:
+      queue: v1
+    command: "bk-snyk"
