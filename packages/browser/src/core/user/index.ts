@@ -1,6 +1,6 @@
 import { v4 as uuid } from '@lukeed/uuid'
 import jar from 'js-cookie'
-import { SegmentEvent } from '../events'
+import { Traits } from '../events'
 import { tld } from './tld'
 import autoBind from '../../lib/bind-all'
 
@@ -92,6 +92,7 @@ export class Cookie extends Store {
       expires: this.options.maxage,
       domain: this.options.domain,
       path: this.options.path,
+      secure: this.options.secure,
     }
   }
 
@@ -222,7 +223,7 @@ export class User {
 
     this.mem = isDisabled ? new NullStorage() : new Store()
 
-    const legacyUser = this.cookies.get<{ id?: string; traits?: object }>(
+    const legacyUser = this.cookies.get<{ id?: string; traits?: Traits }>(
       defaults.cookie.oldKey
     )
     if (legacyUser) {
@@ -312,7 +313,7 @@ export class User {
     return this.chainGet(this.anonKey)
   }
 
-  traits = (traits?: object | null): SegmentEvent['traits'] => {
+  traits = (traits?: Traits | null): Traits | undefined => {
     if (this.options.disable) {
       return
     }
@@ -333,7 +334,7 @@ export class User {
     )
   }
 
-  identify(id?: ID, traits?: object): void {
+  identify(id?: ID, traits?: Traits): void {
     if (this.options.disable) {
       return
     }

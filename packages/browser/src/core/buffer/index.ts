@@ -1,12 +1,17 @@
 import { Analytics } from '../analytics'
 import { Context } from '../context'
 import { isThenable } from '../../lib/is-thenable'
+import { AnalyticsBrowserCore } from '../analytics/interfaces'
+import { version } from '../../generated/version'
 
 /**
- * The names of any Analytics instance methods that can be called pre-initialization.
- * These methods should exist statically on AnalyticsBrowser.
+ * The names of any AnalyticsBrowser methods that also exist on Analytics
  */
 export type PreInitMethodName =
+  | 'screen'
+  | 'register'
+  | 'deregister'
+  | 'user'
   | 'trackSubmit'
   | 'trackClick'
   | 'trackLink'
@@ -108,15 +113,11 @@ type MethodCallMap = Partial<Record<PreInitMethodName, PreInitMethodCall[]>>
 export class PreInitMethodCallBuffer {
   private _value = {} as MethodCallMap
 
-  public toArray(): PreInitMethodCall[] {
-    return Object.values(this._value).reduce((acc, v) => {
-      return acc.concat(...v)
-    }, [] as PreInitMethodCall[])
+  toArray(): PreInitMethodCall[] {
+    return ([] as PreInitMethodCall[]).concat(...Object.values(this._value))
   }
 
-  public getCalls<T extends PreInitMethodName>(
-    methodName: T
-  ): PreInitMethodCall<T>[] {
+  getCalls<T extends PreInitMethodName>(methodName: T): PreInitMethodCall<T>[] {
     return (this._value[methodName] ?? []) as PreInitMethodCall<T>[]
   }
 
@@ -170,7 +171,9 @@ export type AnalyticsLoader = (
   preInitBuffer: PreInitMethodCallBuffer
 ) => Promise<[Analytics, Context]>
 
-export class AnalyticsBuffered implements PromiseLike<[Analytics, Context]> {
+export class AnalyticsBuffered
+  implements PromiseLike<[Analytics, Context]>, AnalyticsBrowserCore
+{
   instance?: Analytics
   ctx?: Context
   private _preInitBuffer = new PreInitMethodCallBuffer()
@@ -221,7 +224,7 @@ export class AnalyticsBuffered implements PromiseLike<[Analytics, Context]> {
   pageView = this._createMethod('pageview')
   identify = this._createMethod('identify')
   reset = this._createMethod('reset')
-  group = this._createMethod('group')
+  group = this._createMethod('group') as AnalyticsBrowserCore['group']
   track = this._createMethod('track')
   ready = this._createMethod('ready')
   alias = this._createMethod('alias')
@@ -234,12 +237,19 @@ export class AnalyticsBuffered implements PromiseLike<[Analytics, Context]> {
   setAnonymousId = this._createMethod('setAnonymousId')
   addDestinationMiddleware = this._createMethod('addDestinationMiddleware')
 
+  screen = this._createMethod('screen')
+  register = this._createMethod('register')
+  deregister = this._createMethod('deregister')
+  user = this._createMethod('user')
+  readonly VERSION = version
+
   private _createMethod<T extends PreInitMethodName>(methodName: T) {
     return (
       ...args: Parameters<Analytics[T]>
     ): Promise<ReturnTypeUnwrap<Analytics[T]>> => {
       if (this.instance) {
-        return (this.instance[methodName] as Function)(...args)
+        const result = (this.instance[methodName] as Function)(...args)
+        return Promise.resolve(result)
       }
 
       return new Promise((resolve, reject) => {
