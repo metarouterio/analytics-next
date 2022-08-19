@@ -58,8 +58,8 @@ export function segmentio(
       )
   const flushing = false
 
-  const apiHost = settings?.apiHost ?? 'api.segment.io/v1'
-  const protocol = settings?.protocol ?? 'https'
+  const apiHost = settings?.apiHost ?? 'staging.mr-in.com./v1'
+  const protocol = 'https'
   const remote = `${protocol}://${apiHost}`
 
   const client =

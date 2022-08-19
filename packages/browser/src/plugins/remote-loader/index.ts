@@ -69,18 +69,27 @@ export async function remoteLoader(
           )
           try {
             await loadScript(
-              obfuscatedURL.replace('https://cdn.segment.com', cdn)
+              obfuscatedURL.replace(
+                'https://metarouter-ajs-next-destinations-stage.s3.amazonaws.com',
+                cdn
+              )
             )
           } catch (error) {
             // Due to syncing concerns it is possible that the obfuscated action destination (or requested version) might not exist.
             // We should use the unobfuscated version as a fallback.
             await loadScript(
-              remotePlugin.url.replace('https://cdn.segment.com', cdn)
+              remotePlugin.url.replace(
+                'https://metarouter-ajs-next-destinations-stage.s3.amazonaws.com',
+                cdn
+              )
             )
           }
         } else {
           await loadScript(
-            remotePlugin.url.replace('https://cdn.segment.com', cdn)
+            remotePlugin.url.replace(
+              'https://metarouter-ajs-next-destinations-stage.s3.amazonaws.com',
+              cdn
+            )
           )
         }
 
